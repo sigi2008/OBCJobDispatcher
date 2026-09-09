@@ -19,10 +19,14 @@ jobs:
         shell: pwsh
         run: git clone --depth 1 https://github.com/liam-dong/SII-Decrypt-cpp.git vendor/sii-decrypt
 
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Build 64-bit DLL
         shell: cmd
         run: >-
-          for /f "usebackq tokens=*" %i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%i\VC\Auxiliary\Build\vcvars64.bat" &&
           cl /nologo /LD /EHsc /std:c++17 /O2 /MT
           /Ivendor\scs-sdk-plugin\scs_sdk\include
           /Ivendor\sii-decrypt\include
@@ -44,7 +48,6 @@ jobs:
       - name: Verify DLL
         shell: cmd
         run: >-
-          for /f "usebackq tokens=*" %i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%i\VC\Auxiliary\Build\vcvars64.bat" &&
           dumpbin /headers OBCJobDispatcher.dll | findstr /C:"machine (x64)" &&
           dumpbin /exports OBCJobDispatcher.dll | findstr scs_telemetry_init &&
           dumpbin /exports OBCJobDispatcher.dll | findstr scs_telemetry_shutdown
