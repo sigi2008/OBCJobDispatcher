@@ -1,4 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 #include <shlobj.h>
 #include <commctrl.h>
@@ -11,6 +12,8 @@
 #include <vector>
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 
 #include "scssdk_telemetry.h"
 #include "sii_decryptor.h"
