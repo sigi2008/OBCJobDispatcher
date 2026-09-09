@@ -43,7 +43,7 @@ jobs:
           vendor\sii-decrypt\src\core\sii_bin_data.cpp
           vendor\sii-decrypt\src\core\sii_bin_decoder.cpp
           vendor\sii-decrypt\src\core\sii_decryptor.cpp
-          /link /DEF:exports.def /OUT:OBCJobDispatcher.dll comctl32.lib shell32.lib ole32.lib
+          /link /DEF:exports.def /OUT:OBCJobDispatcher.dll user32.lib gdi32.lib comctl32.lib shell32.lib ole32.lib
 
       - name: Verify DLL
         shell: cmd
