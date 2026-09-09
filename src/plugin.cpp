@@ -73,7 +73,11 @@ static bool load_save() {
   std::regex depot(R"(company\s*:\s*company\.volatile\.([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\s*\{)");
   for(auto i=std::sregex_iterator(g_text.begin(),g_text.end(),depot);i!=std::sregex_iterator();++i)g_depots.push_back({(*i)[1],(*i)[2]});
   std::regex block(R"(job_offer_data\s*:\s*[^\{]+\{([^\}]*)\})");
-  auto val=[](const std::string& b,const char* key)->std::string {std::smatch m;std::regex r(std::string("\\b")+key+R"(\s*:\s*"?([^\r\n"]+)"?)");return std::regex_search(b,m,r)?m[1].str():"";};
+  auto val=[](const std::string& b,const char* key)->std::string {
+    std::smatch m;
+    std::regex r(std::string("\\b")+key+"\\s*:\\s*\\\"?([^\\r\\n\\\"]+)\\\"?");
+    return std::regex_search(b,m,r)?m[1].str():"";
+  };
   for(auto i=std::sregex_iterator(g_text.begin(),g_text.end(),block);i!=std::sregex_iterator();++i){
     std::string b=(*i)[1]; Offer o; o.cargo=val(b,"cargo"); o.truck=val(b,"company_truck");o.variant=val(b,"trailer_variant");o.trailerDef=val(b,"trailer_definition");
     std::string u=val(b,"units_count"),km=val(b,"shortest_distance_km"); if(!u.empty())o.units=std::max(1,atoi(u.c_str()));if(!km.empty())o.distance=std::max(1,atoi(km.c_str()));
