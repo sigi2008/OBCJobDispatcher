@@ -1,0 +1,63 @@
+name: Build OBC Job Dispatcher DLL
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch SCS SDK
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/RenCloud/scs-sdk-plugin.git vendor/scs-sdk-plugin
+
+      - name: Fetch SII decoder
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/liam-dong/SII-Decrypt-cpp.git vendor/sii-decrypt
+
+      - name: Build 64-bit DLL
+        shell: cmd
+        run: >-
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" &&
+          cl /nologo /LD /EHsc /std:c++17 /O2 /MT
+          /Ivendor\scs-sdk-plugin\scs_sdk\include
+          /Ivendor\sii-decrypt\include
+          /Ivendor\sii-decrypt\src
+          /Ivendor\sii-decrypt\src\core
+          /Ivendor\sii-decrypt\src\crypto
+          /Ivendor\sii-decrypt\src\compress
+          src\plugin.cpp
+          vendor\sii-decrypt\src\crypto\aes256.cpp
+          vendor\sii-decrypt\src\compress\inflate.cpp
+          vendor\sii-decrypt\src\core\sii_format.cpp
+          vendor\sii-decrypt\src\core\sii_bin_utils.cpp
+          vendor\sii-decrypt\src\core\sii_bin_value.cpp
+          vendor\sii-decrypt\src\core\sii_bin_data.cpp
+          vendor\sii-decrypt\src\core\sii_bin_decoder.cpp
+          vendor\sii-decrypt\src\core\sii_decryptor.cpp
+          /link /DEF:exports.def /OUT:OBCJobDispatcher.dll comctl32.lib shell32.lib ole32.lib
+
+      - name: Verify DLL
+        shell: cmd
+        run: >-
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" &&
+          dumpbin /headers OBCJobDispatcher.dll | findstr /C:"machine (x64)" &&
+          dumpbin /exports OBCJobDispatcher.dll | findstr scs_telemetry_init &&
+          dumpbin /exports OBCJobDispatcher.dll | findstr scs_telemetry_shutdown
+
+      - name: Package plugin
+        shell: pwsh
+        run: |
+          New-Item package -ItemType Directory
+          Copy-Item OBCJobDispatcher.dll package\
+          Copy-Item README.txt package\
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OBCJobDispatcher-Windows-x64
+          path: package
+
