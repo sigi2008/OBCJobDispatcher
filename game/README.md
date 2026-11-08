@@ -7,7 +7,8 @@ finde Überlebende und freunde dich mit Tieren an. Kein Kampf, kein Stress, nur 
 
 ## Starten
 
-`index.html` im Browser öffnen (Doppelklick genügt). Du brauchst keine Installation und
+`Neuland.html` im Browser öffnen (Doppelklick genügt). Darin ist das ganze Spiel in einer Datei.
+Nach Änderungen am Code erzeugst du die Datei mit `python3 build.py` neu. Du brauchst keine Installation und
 keinen Server. Der Spielstand wird automatisch im Browser gespeichert.
 
 ## Steuerung
@@ -36,6 +37,12 @@ im Bau-Modus aufs Feld tippen.
 5. Die **Werkstatt** schaltet Eisen, Eisenwerkzeuge und das **Fahrrad** frei.
 6. **Schiff** wird zum Segelboot, die **Garage** gibt dir einen Motorroller und der **Hangar** einen
    Heißluftballon. Der **Leuchtturm** deckt die ganze Karte auf.
+
+7. **Erze abbauen** (Eisen, Kupfer, Gold): Erzfelsen gibt es in den Bergen, normale Felsen enthalten manchmal
+   auch Erz. Im **Schmelzofen** (Bau-Modus) schmilzt du daraus Barren. Mit den Barren stellst du Goldwerkzeug,
+   einen Kupferkompass, ein Glücksamulett und Statuen her.
+8. **Eigene Häuser bauen**: Im Bau-Modus gibt es **Holzhaus** (+2 Bewohner) und **Blockhütte** (+3 Bewohner).
+9. **Baumstümpfe** verschwinden, wenn du nochmal mit der Axt draufhaust. So machst du Platz zum Bauen.
 
 Jede neue Welt wird zufällig erzeugt: eine 512×512-Felder große Insel mit Wiesen, Wäldern, Stränden,
 Bergen, Schnee und kleinen Inseln. Tag und Nacht wechseln sich ab, nachts leuchten Lagerfeuer,

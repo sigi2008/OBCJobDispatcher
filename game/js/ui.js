@@ -66,10 +66,11 @@ const UI = {
       for (const k of ITEM_ORDER) if (G.inv[k] > 0) h += `<div class="slot" title="${ITEMS[k].name}">${icon(k)}<b>${G.inv[k]}</b><small>${ITEMS[k].name}</small></div>`;
       if (!h) h = '<div class="empty">Dein Rucksack ist leer – sammle etwas!</div>';
       let t = '';
-      if (G.tools.axe) t += `<div class="slot tool t${G.tools.axe}" title="Axt">${icon('axe')}<small>${G.tools.axe > 1 ? 'Eisen' : 'Stein'}axt</small></div>`;
-      if (G.tools.pick) t += `<div class="slot tool t${G.tools.pick}" title="Spitzhacke">${icon('pick')}<small>${G.tools.pick > 1 ? 'Eisen' : 'Stein'}hacke</small></div>`;
+      if (G.tools.axe) t += `<div class="slot tool t${G.tools.axe}" title="Axt">${icon('axe')}<small>${['', 'Stein', 'Eisen', 'Gold'][G.tools.axe]}axt</small></div>`;
+      if (G.tools.pick) t += `<div class="slot tool t${G.tools.pick}" title="Spitzhacke">${icon('pick')}<small>${['', 'Stein', 'Eisen', 'Gold'][G.tools.pick]}hacke</small></div>`;
       $('inventory').innerHTML = t + h;
       if (this.panelOpen === 'craft') this.renderCraft();
+      if (this.panelOpen === 'furnace') this.renderFurnace();
       if (this.panelOpen === 'landmark') this.renderLandmark();
       if (G.buildMode) this.renderBuildBar();
     }
@@ -115,7 +116,7 @@ const UI = {
       const locked = r.req && !Game.isRestored(r.req);
       const owned = (r.tool && G.tools[r.tool[0]] >= r.tool[1]) || (r.upgrade && G.upgrades[r.upgrade]);
       const can = !locked && !owned && Game.has(r.need);
-      const ic = r.tool ? r.tool[0] : r.give ? Object.keys(r.give)[0] : r.vehicle ? 'iron' : r.id === 'shoes' ? 'fiber' : 'crystal';
+      const ic = r.tool ? r.tool[0] : r.give ? Object.keys(r.give)[0] : r.vehicle ? 'iron' : { shoes: 'fiber', compass: 'copper', amulet: 'gold' }[r.id] || 'crystal';
       h += `<div class="card ${can ? 'can' : ''} ${locked ? 'locked' : ''}">
         <div class="ct">${icon(ic, 'big')}<div><b>${r.name}</b><small>${r.desc}</small></div></div>
         <div class="needs">${locked ? '🔒 Benötigt: ' + LANDMARKS[r.req].name : owned ? '✅ Hast du schon' : needHtml(r.need)}</div>
@@ -126,6 +127,24 @@ const UI = {
     if (!ws) h += '<p class="tip">Tipp: Repariere die <b>Alte Werkstatt</b> für Eisen und Fahrzeuge!</p>';
     $('panelBody').innerHTML = h;
     $('panelBody').querySelectorAll('button[data-r]').forEach(b => b.onclick = () => { Game.craft(RECIPES.find(r => r.id === b.dataset.r)); this.renderCraft(); });
+  },
+
+  openFurnace() { this.open('furnace', '🔥 Schmelzofen', ''); this.renderFurnace(); },
+  renderFurnace() {
+    let h = '<p class="intro">Schmilz Erz zu Barren. Erz findest du in Felsen in den Bergen – Kupfer leuchtet grün-orange, Gold gelb. Normale Felsen enthalten manchmal auch Erz!</p><div class="grid">';
+    for (const r of SMELT) {
+      const k = Object.keys(r.give)[0], can = Game.has(r.need);
+      h += `<div class="card ${can ? 'can' : ''}"><div class="ct">${icon(k, 'big')}<div><b>${r.name}</b><small>Du hast: ${G.inv[k] || 0}</small></div></div>
+        <div class="needs">${needHtml(r.need)}</div>
+        <div style="display:flex;gap:6px"><button class="btn ${can ? '' : 'dis'}" data-s="${r.id}" data-n="1">Schmelzen</button><button class="btn ${can ? '' : 'dis'}" data-s="${r.id}" data-n="99">Alles</button></div></div>`;
+    }
+    $('panelBody').innerHTML = h + '</div>';
+    $('panelBody').querySelectorAll('button[data-s]').forEach(b => b.onclick = () => {
+      const r = SMELT.find(r => r.id === b.dataset.s); let n = 0;
+      while (n < +b.dataset.n && Game.has(r.need)) { Game.take(r.need); Game.give(r.give); n++; }
+      if (n) { Sound.play('craft'); this.toast(n + '× ' + r.name + ' geschmolzen!', Object.keys(r.give)[0]); } else Sound.play('nope');
+      this.renderFurnace();
+    });
   },
 
   openLandmark(l) { this.curLm = l; this.open('landmark', LANDMARKS[l.type].name, ''); this.renderLandmark(); },

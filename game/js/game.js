@@ -24,7 +24,7 @@ const Game = {
   // ---------- Neues Spiel / Laden ----------
   newGame(seed) {
     G.seed = seed || (Math.random() * 1e9) | 0;
-    G.time = 0; G.inv = {}; G.tools = { axe: 0, pick: 0 }; G.upgrades = {}; G.harvested = {}; G.builds = {};
+    G.time = 0; G.inv = {}; G.tools = { axe: 0, pick: 0 }; G.upgrades = {}; G.harvested = {}; G.removed = {}; G.builds = {};
     G.lmStage = {}; G.discovered = {}; G.pets = []; G.vehicles = []; G.storage = {}; G.revealAll = false; G.animals = [];
     G.explored = new Uint8Array(EXW * EXW); G.nextVid = 1; G.prodTimer = 0;
     World.generate(G.seed);
@@ -40,7 +40,7 @@ const Game = {
     if (!G.started) return;
     let bin = ''; const ex = G.explored; for (let i = 0; i < ex.length; i++) bin += String.fromCharCode(ex[i]);
     const data = {
-      v: 1, seed: G.seed, time: G.time, inv: G.inv, tools: G.tools, upgrades: G.upgrades, harvested: G.harvested,
+      v: 1, seed: G.seed, time: G.time, inv: G.inv, tools: G.tools, upgrades: G.upgrades, harvested: G.harvested, removed: G.removed,
       builds: G.builds, lmStage: G.lmStage, discovered: G.discovered, storage: G.storage, revealAll: G.revealAll,
       survivors: G.survivors.map(s => ({ i: s.i, state: s.state, helped: s.helped })),
       pets: G.pets.map(p => ({ type: p.type, var: p.var, name: p.name, x: p.x, y: p.y, stay: p.stay, hx: p.hx, hy: p.hy })),
@@ -56,7 +56,7 @@ const Game = {
   load() {
     let d; try { d = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return false; }
     if (!d) return false;
-    G.seed = d.seed; G.harvested = d.harvested || {};
+    G.seed = d.seed; G.harvested = d.harvested || {}; G.removed = d.removed || {};
     World.generate(G.seed);
     Object.assign(G, { time: d.time, inv: d.inv, tools: d.tools, upgrades: d.upgrades || {}, builds: d.builds || {}, lmStage: d.lmStage || {}, discovered: d.discovered || {}, storage: d.storage || {}, revealAll: !!d.revealAll, nextVid: d.nextVid || 1, zoom: d.zoom || 1 });
     G.explored = new Uint8Array(EXW * EXW);
@@ -98,7 +98,11 @@ const Game = {
   isRestored(type) { return World.landmarks.some(l => l.type === type && this.lmDone(l)); },
   cabin() { return World.landmarks[0]; },
   basePos() { const c = this.cabin(); return c && this.lmDone(c) ? { x: (c.tx + c.w / 2) * TILE, y: (c.ty + c.h) * TILE } : null; },
-  capacity() { return World.landmarks.filter(l => (l.type === 'cabin' || l.type === 'house') && this.lmDone(l)).length * 2; },
+  capacity() {
+    let c = World.landmarks.filter(l => (l.type === 'cabin' || l.type === 'house') && this.lmDone(l)).length * 2;
+    for (const k in G.builds) { const B = BUILD_BY_ID[G.builds[k].type]; if (B && B.home) c += B.home; }
+    return c;
+  },
   residents() { return G.survivors.filter(s => s.state === 'base').length; },
 
   // ---------- Bewegung & Kollision ----------
@@ -201,10 +205,14 @@ const Game = {
       const bx = i * TILE + 16, by = j * TILE + 20, d = U.dist(cx, cy, bx, by);
       if (b.type === 'garden') consider({ kind: 'build', b, label: G.time - b.t >= 90 ? 'Beeren ernten' : 'Wächst noch…', x: bx, y: by }, d, 40);
       if (b.type === 'sapling' && G.time - b.t >= 150) consider({ kind: 'build', b, label: 'Baum fällen', x: bx, y: by - 40 }, d, 40);
+      if (b.type === 'furnace') consider({ kind: 'build', b, label: 'Schmelzofen benutzen', x: bx, y: by - 30 }, d, 44);
       if (b.type === 'bench') consider({ kind: 'build', b, label: 'Ausruhen', x: bx, y: by }, d, 36);
     }
     for (const o of World.objectsNear(cx, cy, 48)) {
-      if (o.regrowAt > G.time) continue;
+      if (o.regrowAt > G.time) {
+        if (OBJ[o.type].tree) consider({ kind: 'gather', o, stump: true, label: 'Baumstumpf entfernen', x: o.x, y: o.y - 10 }, U.dist(cx, cy, o.x, o.y - 6), 36);
+        continue;
+      }
       consider({ kind: 'gather', o, label: OBJ[o.type].name + (OBJ[o.type].tool ? ' abbauen' : ' sammeln'), x: o.x, y: o.y - 20 }, U.dist(cx, cy, o.x, o.y - 6), 40);
     }
     return best;
@@ -244,12 +252,27 @@ const Game = {
     const f = G.focus, p = G.player;
     if (!f || f.kind !== 'gather') { p.act = null; return; }
     const o = f.o, d = OBJ[o.type];
+    if (f.stump) {
+      if (!G.tools.axe) { if (!this._warn || G.time - this._warn > 2) { this._warn = G.time; Sound.play('nope'); UI.toast('Du brauchst eine Axt!', 'axe'); } p.act = null; return; }
+      p.act = 'axe'; p.actT += dt;
+      if (p.actT >= 0.42) {
+        p.actT = 0; o.shake = 0.25; o.stumpHp = (o.stumpHp || 2) - G.tools.axe; Sound.play('chop');
+        for (let i = 0; i < 4; i++) G.particles.push({ kind: 'chip', x: o.x + (Math.random() - 0.5) * 16, y: o.y - 10, vx: (Math.random() - 0.5) * 80, vy: -40 - Math.random() * 60, life: 0.8, t: 0, col: '#c8935e' });
+        if (o.stumpHp <= 0) {
+          G.removed[o.id] = 1; delete G.harvested[o.id];
+          const [cx, cy] = o.id.split('_').map(Number), arr = World.objects(cx, cy); arr.splice(arr.indexOf(o), 1);
+          this.give({ wood: 1 }, o.x, o.y); p.act = null;
+          for (let i = 0; i < 6; i++) G.particles.push({ kind: 'dust', x: o.x + (Math.random() - 0.5) * 20, y: o.y, vx: (Math.random() - 0.5) * 50, vy: -20, life: 0.6, t: 0 });
+        }
+      }
+      return;
+    }
     if (d.tool) {
       const tier = G.tools[d.tool] || 0;
       if (tier < d.tier) {
         if (!this._warn || G.time - this._warn > 2) {
           this._warn = G.time; Sound.play('nope');
-          UI.toast(d.tier === 2 ? 'Dafür brauchst du eine Eisenspitzhacke.' : d.tool === 'axe' ? 'Du brauchst eine Axt! Öffne Herstellen [C].' : 'Du brauchst eine Spitzhacke! Öffne Herstellen [C].', d.tool);
+          UI.toast(d.tier === 2 ? 'Dafür brauchst du eine Eisenspitzhacke (oder besser).' : d.tool === 'axe' ? 'Du brauchst eine Axt! Öffne Herstellen [C].' : 'Du brauchst eine Spitzhacke! Öffne Herstellen [C].', d.tool);
         }
         p.act = null; return;
       }
@@ -267,7 +290,10 @@ const Game = {
       if (o.hp <= 0) {
         o.hp = d.hp; o.regrowAt = G.time + d.regrow * (0.8 + Math.random() * 0.4);
         G.harvested[o.id] = o.regrowAt;
-        this.give(d.drops, o.x, o.y);
+        const drops = Object.assign({}, d.drops);
+        if (G.upgrades.amulet && Math.random() < 0.3) for (const k in drops) drops[k] *= 2;
+        if (d.bonus && Math.random() < d.bonus) { const r = Math.random(), k = r < 0.55 ? 'ironore' : r < 0.9 ? 'copperore' : 'goldore'; drops[k] = (drops[k] || 0) + 1; }
+        this.give(drops, o.x, o.y);
         p.act = null;
       }
     }
@@ -300,6 +326,8 @@ const Game = {
     } else if (b.type === 'sapling') {
       if (G.tools.axe < 1) { UI.toast('Du brauchst eine Axt.', 'axe'); return; }
       b.t = G.time; this.give({ wood: 4 }, b.tx * TILE + 16, b.ty * TILE); Sound.play('chop');
+    } else if (b.type === 'furnace') {
+      UI.openFurnace();
     } else if (b.type === 'bench') {
       UI.toast('Du genießt die Aussicht… herrlich ruhig hier. ☀️'); G.particles.push({ kind: 'heart', x: G.player.x, y: G.player.y - 50, vx: 0, vy: -25, life: 1.4, t: 0 });
     }
@@ -352,8 +380,22 @@ const Game = {
   },
 
   // ---------- Bauen ----------
+  footprint(id, tx, ty) {
+    const B = BUILD_BY_ID[id], [w, h] = B.size || [1, 1], ox = tx - Math.floor(w / 2), oy = ty - (h - 1);
+    const tiles = []; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) tiles.push([ox + i, oy + j]);
+    return { ox, oy, w, h, tiles };
+  },
   canPlace(id, tx, ty) {
-    const B = BUILD_BY_ID[id], p = G.player;
+    const B = BUILD_BY_ID[id];
+    if (B.size) {
+      const fp = this.footprint(id, tx, ty);
+      for (const [x, y] of fp.tiles) { const e = this.canPlaceTile(B, x, y); if (e) return e; }
+      return this.has(B.need) ? null : 'Zu wenig Material';
+    }
+    return this.canPlaceTile(B, tx, ty) || (this.has(B.need) ? null : 'Zu wenig Material');
+  },
+  canPlaceTile(B, tx, ty) {
+    const p = G.player;
     if (U.dist(p.x, p.y, tx * TILE + 16, ty * TILE + 16) > 7 * TILE) return 'Zu weit weg';
     if (this.buildAt(tx, ty)) return 'Belegt';
     const t = World.tile(tx, ty);
@@ -363,7 +405,6 @@ const Game = {
     for (const c of World.camps) if (Math.abs(tx - c.tx - 1) <= 1 && Math.abs(ty - c.ty - 1) <= 1) return 'Belegt';
     for (const o of World.objectsNear(tx * TILE + 16, ty * TILE + 16, 40)) if (o.regrowAt <= G.time && Math.floor(o.x / TILE) === tx && Math.floor((o.y - 4) / TILE) === ty) return 'Hier wächst etwas';
     if (!B.floor && Math.floor(p.x / TILE) === tx && Math.floor(p.y / TILE) === ty) return 'Du stehst im Weg';
-    if (!this.has(B.need)) return 'Zu wenig Material';
     return null;
   },
 
@@ -371,13 +412,25 @@ const Game = {
     const err = this.canPlace(id, tx, ty);
     if (err) { Sound.play('nope'); if (err === 'Zu wenig Material') UI.toast('Dir fehlt: ' + U.fmtNeed(BUILD_BY_ID[id].need)); return; }
     this.take(BUILD_BY_ID[id].need);
-    G.builds[tx + ',' + ty] = { type: id, tx, ty, t: G.time };
+    if (BUILD_BY_ID[id].size) {
+      const fp = this.footprint(id, tx, ty), key = fp.ox + ',' + fp.oy;
+      for (const [x, y] of fp.tiles) G.builds[x + ',' + y] = { type: 'part', of: key, tx: x, ty: y };
+      G.builds[key] = { type: id, tx: fp.ox, ty: fp.oy, t: G.time };
+      UI.toast(BUILD_BY_ID[id].name + ' gebaut! Platz für ' + BUILD_BY_ID[id].home + ' weitere Bewohner.', 'planks');
+      this.moveInHelped(); this.save();
+    } else G.builds[tx + ',' + ty] = { type: id, tx, ty, t: G.time };
     Sound.play('build');
     for (let i = 0; i < 6; i++) G.particles.push({ kind: 'dust', x: tx * TILE + Math.random() * 32, y: ty * TILE + 28, vx: (Math.random() - 0.5) * 50, vy: -20, life: 0.6, t: 0 });
   },
 
   demolish(tx, ty) {
-    const b = this.buildAt(tx, ty); if (!b) return;
+    let b = this.buildAt(tx, ty); if (!b) return;
+    if (b.type === 'part') { b = G.builds[b.of]; if (!b) { delete G.builds[tx + ',' + ty]; return; } tx = b.tx; ty = b.ty; }
+    if (BUILD_BY_ID[b.type].size) {
+      if (Game.residents() > Game.capacity() - BUILD_BY_ID[b.type].home) { Sound.play('nope'); UI.toast('Hier wohnt jemand – das Haus kann nicht abgebaut werden.'); return; }
+      for (const [x, y] of this.footprint(b.type, 0, 0).tiles.map(([x, y]) => [x - this.footprint(b.type, 0, 0).ox + tx, y - this.footprint(b.type, 0, 0).oy + ty])) delete G.builds[x + ',' + y];
+      this.give(BUILD_BY_ID[b.type].need); Sound.play('click'); return;
+    }
     if (b.type === 'bridge' && Math.floor(G.player.x / TILE) === tx && Math.floor(G.player.y / TILE) === ty) { Sound.play('nope'); return; }
     delete G.builds[tx + ',' + ty];
     this.give(BUILD_BY_ID[b.type].need);

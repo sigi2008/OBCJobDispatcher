@@ -11,7 +11,12 @@ const ITEMS = {
   metal:   { name: 'Metallschrott' },
   planks:  { name: 'Bretter' },
   rope:    { name: 'Seil' },
-  iron:    { name: 'Eisen' },
+  iron:    { name: 'Eisenbarren' },
+  ironore: { name: 'Eisenerz' },
+  copperore:{ name: 'Kupfererz' },
+  goldore: { name: 'Golderz' },
+  copper:  { name: 'Kupferbarren' },
+  gold:    { name: 'Goldbarren' },
   bread:   { name: 'Brot' },
   crystal: { name: 'Kristall' },
 };
@@ -25,8 +30,10 @@ const OBJ = {
   pine:     { name: 'Tanne',        tool: 'axe',  tier: 1, hp: 4, solid: 10, drops: { wood: 4 }, regrow: 260, tree: true },
   palm:     { name: 'Palme',        tool: 'axe',  tier: 1, hp: 3, solid: 8,  drops: { wood: 2, fiber: 2 }, regrow: 260, tree: true },
   snowpine: { name: 'Schneetanne',  tool: 'axe',  tier: 1, hp: 5, solid: 10, drops: { wood: 5 }, regrow: 300, tree: true },
-  rock:     { name: 'Felsen',       tool: 'pick', tier: 1, hp: 5, solid: 13, drops: { stone: 3 }, regrow: 300 },
-  ore:      { name: 'Erzbrocken',   tool: 'pick', tier: 1, hp: 7, solid: 13, drops: { metal: 2, stone: 1 }, regrow: 400 },
+  rock:     { name: 'Felsen',       tool: 'pick', tier: 1, hp: 5, solid: 13, drops: { stone: 3 }, regrow: 300, bonus: 0.3 },
+  ore:      { name: 'Eisenerz-Felsen', tool: 'pick', tier: 1, hp: 7, solid: 13, drops: { ironore: 2, stone: 1 }, regrow: 400 },
+  copper:   { name: 'Kupfererz-Felsen', tool: 'pick', tier: 1, hp: 6, solid: 13, drops: { copperore: 2, stone: 1 }, regrow: 400 },
+  gold:     { name: 'Goldader',     tool: 'pick', tier: 2, hp: 8, solid: 13, drops: { goldore: 2, stone: 1 }, regrow: 600 },
   crystal:  { name: 'Kristalle',    tool: 'pick', tier: 2, hp: 6, solid: 9,  drops: { crystal: 1 }, regrow: 600 },
   bush:     { name: 'Beerenstrauch',tool: null,   tier: 0, hp: 1, solid: 0,  drops: { berries: 3 }, regrow: 120 },
   fiber:    { name: 'Hohes Gras',   tool: null,   tier: 0, hp: 1, solid: 0,  drops: { fiber: 2 }, regrow: 150 },
@@ -47,6 +54,10 @@ const RECIPES = [
   { id: 'axe2',   name: 'Eisenaxt',          desc: 'Doppelt so schnell.',              need: { iron: 3, planks: 2 }, tool: ['axe', 2], req: 'workshop' },
   { id: 'pick2',  name: 'Eisenspitzhacke',   desc: 'Doppelt so schnell, baut Kristalle ab.', need: { iron: 3, planks: 2 }, tool: ['pick', 2], req: 'workshop' },
   { id: 'bike',   name: 'Fahrrad',           desc: 'Doppelt so schnell an Land!',      need: { iron: 4, planks: 4, rope: 2 }, vehicle: 'bike', req: 'workshop' },
+  { id: 'goldaxe', name: 'Goldaxt',         desc: 'Die schnellste Axt (3× Kraft).',   need: { gold: 3, iron: 1, planks: 2 }, tool: ['axe', 3], req: 'workshop' },
+  { id: 'goldpick',name: 'Goldspitzhacke',  desc: 'Die schnellste Hacke (3× Kraft).', need: { gold: 3, iron: 1, planks: 2 }, tool: ['pick', 3], req: 'workshop' },
+  { id: 'compass', name: 'Kupferkompass',   desc: 'Zeigt alle Überlebenden auf der Karte.', need: { copper: 3, iron: 1 }, upgrade: 'compass' },
+  { id: 'amulet',  name: 'Glücksamulett',   desc: '30% Chance auf doppelte Ernte.',   need: { gold: 2, crystal: 1, rope: 1 }, upgrade: 'amulet' },
   { id: 'lamp',   name: 'Handlaterne',       desc: 'Leuchtet nachts heller.',          need: { iron: 1, crystal: 1, wood: 2 }, upgrade: 'lamp', req: 'workshop' },
 ];
 
@@ -67,9 +78,23 @@ const BUILDS = [
   { id: 'tent',     name: 'Zelt',         need: { fiber: 6, wood: 3 },      solid: true },
   { id: 'well',     name: 'Brunnen',      need: { stone: 10, rope: 2 },     solid: true },
   { id: 'statue',   name: 'Kristallstatue', need: { stone: 6, crystal: 1 }, solid: true, light: 90 },
+  { id: 'furnace',  name: 'Schmelzofen', need: { stone: 12, wood: 4 },    solid: true, light: 110, desc: 'Erz zu Barren schmelzen.' },
+  { id: 'home',     name: 'Holzhaus',     need: { planks: 10, stone: 8, rope: 2 }, solid: true, size: [3, 2], light: 140, home: 2, desc: '+2 Bewohner.' },
+  { id: 'bighome',  name: 'Blockhütte',   need: { planks: 16, stone: 12, rope: 4, iron: 2 }, solid: true, size: [4, 2], light: 150, home: 3, desc: '+3 Bewohner.' },
+  { id: 'cstatue',  name: 'Kupferstatue', need: { copper: 3, stone: 4 },    solid: true },
+  { id: 'gstatue',  name: 'Goldstatue',   need: { gold: 3, stone: 6 },      solid: true, light: 90 },
   { id: 'shellpath',name: 'Muschelpfad',  need: { shell: 1 },               floor: true, desc: 'Hübsch & schnell.' },
 ];
 const BUILD_BY_ID = Object.fromEntries(BUILDS.map(b => [b.id, b]));
+BUILD_BY_ID.part = { id: 'part', solid: true };
+
+// Schmelzofen-Rezepte
+const SMELT = [
+  { id: 'siron',   name: 'Eisenbarren',  need: { ironore: 2, wood: 1 }, give: { iron: 1 } },
+  { id: 'siron2',  name: 'Eisenbarren (aus Schrott)', need: { metal: 2, wood: 1 }, give: { iron: 1 } },
+  { id: 'scopper', name: 'Kupferbarren', need: { copperore: 2, wood: 1 }, give: { copper: 1 } },
+  { id: 'sgold',   name: 'Goldbarren',   need: { goldore: 2, wood: 2 }, give: { gold: 1 } },
+];
 
 // Verlassene Orte zum Wiederaufbauen
 const LANDMARKS = {
@@ -129,7 +154,7 @@ const JOBS = {
   carp:    { name: 'Zimmerer/in',    yields: { planks: 2 } },
   rope:    { name: 'Seilmacher/in',  yields: { rope: 1 } },
   smith:   { name: 'Schmied/in',     yields: { iron: 1 }, req: 'workshop' },
-  miner:   { name: 'Bergmann/frau',  yields: { metal: 2 } },
+  miner:   { name: 'Bergmann/frau',  yields: { ironore: 2, copperore: 1 } },
   baker:   { name: 'Bäcker/in',      yields: { bread: 1 }, req: 'windmill' },
   beach:   { name: 'Strandsammler/in', yields: { shell: 2 } },
   crystal: { name: 'Kristallsucher/in', yields: { crystal: 1 }, req: 'workshop' },

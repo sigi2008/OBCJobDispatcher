@@ -85,12 +85,12 @@ function drawStump(ctx) {
   ell(ctx, 24, 16, 11, 5); fillOl(ctx, '#e0b47a', 2.5);
   ell(ctx, 24, 16, 5, 2); ctx.strokeStyle = '#b07e48'; ctx.lineWidth = 1.5; ctx.stroke();
 }
-function drawRock(ctx, ore, snow) {
+function drawRock(ctx, ore, snow, oc = '#e0892f', oh = '#ffd08a') {
   shadow(ctx, 26, 38, 22, 6);
   poly(ctx, [6, 36, 4, 22, 14, 10, 30, 6, 44, 14, 48, 30, 42, 38]); fillOl(ctx, snow ? '#b9bfc9' : '#a3a09b');
   poly(ctx, [12, 20, 16, 12, 30, 9, 40, 16, 30, 20]); ctx.fillStyle = snow ? '#f3f6fa' : '#c9c6c0'; ctx.fill();
   ctx.strokeStyle = 'rgba(58,42,34,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(26, 22); ctx.lineTo(22, 32); ctx.stroke();
-  if (ore) { for (const [x, y, r] of [[16, 28, 3.5], [34, 26, 4], [40, 33, 2.5], [24, 16, 2.5]]) { circ(ctx, x, y, r); fillOl(ctx, '#e0892f', 1.5); circ(ctx, x - 1, y - 1, r * 0.4); ctx.fillStyle = '#ffd08a'; ctx.fill(); } }
+  if (ore) { for (const [x, y, r] of [[16, 28, 3.5], [34, 26, 4], [40, 33, 2.5], [24, 16, 2.5]]) { circ(ctx, x, y, r); fillOl(ctx, oc, 1.5); circ(ctx, x - 1, y - 1, r * 0.4); ctx.fillStyle = oh; ctx.fill(); } }
 }
 function drawCrystal(ctx) {
   shadow(ctx, 22, 40, 16, 5);
@@ -371,6 +371,20 @@ function buildSprites() {
     poly(c, [20, 4, 30, 24, 24, 46, 16, 46, 10, 24]); fillOl(c, '#8ff0ff');
     poly(c, [20, 8, 18, 24, 20, 42, 14, 24]); c.fillStyle = '#d8fbff'; c.fill();
   });
+  Art.make('furnace', 48, 64, 24, 56, (c) => {
+    shadow(c, 24, 56, 21, 5);
+    rrect(c, 30, 4, 10, 26, 2); fillOl(c, '#8d8780');
+    c.beginPath(); c.moveTo(4, 56); c.lineTo(4, 30); c.quadraticCurveTo(24, 6, 44, 30); c.lineTo(44, 56); c.closePath(); fillOl(c, '#a9a49c');
+    c.strokeStyle = '#8a857e'; c.lineWidth = 2; for (const y of [36, 46]) { c.beginPath(); c.moveTo(6, y); c.lineTo(42, y); c.stroke(); }
+    c.beginPath(); c.moveTo(14, 56); c.lineTo(14, 42); c.quadraticCurveTo(24, 32, 34, 42); c.lineTo(34, 56); c.closePath(); fillOl(c, '#ff8a2e', 2.5);
+    c.fillStyle = '#ffd34a'; ell(c, 24, 52, 7, 4); c.fill();
+  });
+  const statueSpr = (name, col, hi) => Art.make(name, 40, 70, 20, 62, (c) => {
+    shadow(c, 20, 62, 16, 4); rrect(c, 6, 46, 28, 16, 3); fillOl(c, '#bdb8b0');
+    circ(c, 20, 14, 8); fillOl(c, col); rrect(c, 12, 22, 16, 24, 6); fillOl(c, col);
+    c.fillStyle = hi; circ(c, 17, 11, 3); c.fill(); c.fillRect(15, 26, 3, 14);
+  });
+  statueSpr('cstatue', '#d9783a', '#f5b37f'); statueSpr('gstatue', '#f2c12e', '#fff6c4');
   Art.make('campfire_base', 40, 30, 20, 22, (c) => {
     shadow(c, 20, 22, 17, 5);
     for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; ell(c, 20 + Math.cos(a) * 13, 20 + Math.sin(a) * 5, 5, 3.5); fillOl(c, '#9e9a94', 1.5); }
@@ -601,6 +615,10 @@ function buildIcons() {
   I('rope', c => { circ(c, 16, 16, 11); c.lineWidth = 7; c.strokeStyle = OL; c.stroke(); c.lineWidth = 4; c.strokeStyle = '#d9b36c'; c.stroke(); circ(c, 16, 16, 5); c.lineWidth = 5; c.strokeStyle = OL; c.stroke(); c.lineWidth = 2.5; c.strokeStyle = '#d9b36c'; c.stroke(); });
   I('iron', c => { poly(c, [3, 24, 8, 12, 24, 12, 29, 24]); fillOl(c, '#b8c0cc', 2); c.fillStyle = '#e6ebf2'; poly(c, [9, 14, 23, 14, 25, 18, 7, 18]); c.fill(); });
   I('bread', c => { ell(c, 16, 18, 13, 9); fillOl(c, '#d9973f', 2); c.strokeStyle = '#a8692a'; c.lineWidth = 2; for (const x of [10, 16, 22]) { c.beginPath(); c.moveTo(x - 2, 13); c.lineTo(x + 2, 20); c.stroke(); } });
+  const oreI = (id, col, hi) => I(id, c => { poly(c, [5, 24, 4, 14, 12, 6, 22, 7, 28, 16, 26, 25]); fillOl(c, '#a3a09b', 2); for (const [x, y, r] of [[12, 16, 4], [20, 13, 3.5], [19, 21, 3]]) { circ(c, x, y, r); fillOl(c, col, 1.5); c.fillStyle = hi; circ(c, x - 1, y - 1, r * 0.4); c.fill(); } });
+  oreI('ironore', '#b4553a', '#e8a08a'); oreI('copperore', '#e0892f', '#7fe0b0'); oreI('goldore', '#ffcf2e', '#fff6b0');
+  const barI = (id, col, hi) => I(id, c => { poly(c, [3, 24, 8, 12, 24, 12, 29, 24]); fillOl(c, col, 2); c.fillStyle = hi; poly(c, [9, 14, 23, 14, 25, 18, 7, 18]); c.fill(); });
+  barI('copper', '#d9783a', '#f5b37f'); barI('gold', '#f2c12e', '#fff2a8');
   I('crystal', c => { poly(c, [10, 28, 10, 12, 16, 3, 22, 12, 22, 28]); fillOl(c, '#7ae6f2', 2); c.fillStyle = '#d8fbff'; poly(c, [12, 26, 12, 13, 15, 7, 15, 26]); c.fill(); });
   I('axe', c => { c.save(); c.translate(16, 16); c.rotate(0.6); rrect(c, -2, -13, 4, 26, 1); fillOl(c, '#8d5a32', 2); poly(c, [0, -13, 11, -15, 11, -3, 0, -5]); fillOl(c, '#a7adb6', 2); c.restore(); });
   I('pick', c => { c.save(); c.translate(16, 16); c.rotate(0.6); rrect(c, -2, -11, 4, 25, 1); fillOl(c, '#8d5a32', 2); c.beginPath(); c.moveTo(-13, -6); c.quadraticCurveTo(0, -18, 13, -6); c.lineTo(10, -4); c.quadraticCurveTo(0, -12, -10, -4); c.closePath(); fillOl(c, '#a7adb6', 2); c.restore(); });
@@ -617,7 +635,9 @@ Art.init = function () {
   Art.make('stump', 48, 36, 24, 30, c => drawStump(c));
   Art.make('rock0', 52, 44, 26, 38, c => drawRock(c));
   Art.make('rock1', 52, 44, 26, 38, c => drawRock(c, false, true));
-  Art.make('ore0', 52, 44, 26, 38, c => drawRock(c, true));
+  Art.make('ore0', 52, 44, 26, 38, c => drawRock(c, true, false, '#b4553a', '#e8a08a'));
+  Art.make('copper0', 52, 44, 26, 38, c => drawRock(c, true, false, '#e0892f', '#7fe0b0'));
+  Art.make('gold0', 52, 44, 26, 38, c => drawRock(c, true, false, '#ffcf2e', '#fff6b0'));
   Art.make('crystal0', 44, 44, 22, 40, c => drawCrystal(c));
   Art.make('bush0', 44, 38, 22, 32, c => drawBush(c, '#e8414f'));
   Art.make('bush1', 44, 38, 22, 32, c => drawBush(c, '#6a5acd'));

@@ -172,7 +172,7 @@ const World = {
           case T.GRASS:
             if (r < 0.045) type = r2 < 0.6 ? 'oak' : 'birch';
             else if (r < 0.06) type = 'bush'; else if (r < 0.095) type = 'fiber'; else if (r < 0.11) type = 'stick';
-            else if (r < 0.12) type = 'pebble'; else if (r < 0.127) type = 'rock'; else if (r < 0.15) type = 'flowers';
+            else if (r < 0.12) type = 'pebble'; else if (r < 0.127) type = 'rock'; else if (r < 0.15) type = 'flowers'; else if (r < 0.153) type = 'copper';
             break;
           case T.MEADOW:
             if (r < 0.07) type = 'flowers'; else if (r < 0.11) type = 'fiber'; else if (r < 0.13) type = 'bush';
@@ -182,14 +182,15 @@ const World = {
             if (r < 0.025) type = 'palm'; else if (r < 0.045) type = 'shell'; else if (r < 0.055) type = 'pebble'; else if (r < 0.065) type = 'stick';
             break;
           case T.ROCK:
-            if (r < 0.09) type = 'rock'; else if (r < 0.115) type = 'ore'; else if (r < 0.14) type = 'pebble'; else if (r < 0.15) type = 'pine';
-            else if (r < 0.155) type = 'crystal';
+            if (r < 0.08) type = 'rock'; else if (r < 0.11) type = 'ore'; else if (r < 0.13) type = 'copper'; else if (r < 0.138) type = 'gold'; else if (r < 0.155) type = 'pebble'; else if (r < 0.165) type = 'pine';
+            else if (r < 0.17) type = 'crystal';
             break;
           case T.SNOW:
-            if (r < 0.06) type = 'snowpine'; else if (r < 0.1) { type = 'rock'; v = 1; } else if (r < 0.12) type = 'crystal'; else if (r < 0.13) type = 'ore';
+            if (r < 0.06) type = 'snowpine'; else if (r < 0.1) { type = 'rock'; v = 1; } else if (r < 0.12) type = 'crystal'; else if (r < 0.13) type = 'ore'; else if (r < 0.142) type = 'gold';
             break;
         }
         if (!type) continue;
+        if (G.removed && G.removed[cx + '_' + cy + '_' + n]) { n++; continue; }
         if (type === 'oak') v = Math.floor(r2 * 97) % 3;
         if (type === 'pine' || type === 'bush' || type === 'flowers') v = Math.floor(r2 * 53) % 2;
         const jx = (U.hash(tx, ty, this.seed + 11) - 0.5) * 14, jy = (U.hash(tx, ty, this.seed + 13) - 0.5) * 10;

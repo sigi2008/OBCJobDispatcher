@@ -55,10 +55,12 @@ const R = {
     ctx.globalAlpha = 1;
     // Boden-Bauteile
     const dl = [];
-    for (let ty = ty0 - 2; ty <= ty1 + 3; ty++) for (let tx = tx0 - 1; tx <= tx1 + 1; tx++) {
+    for (let ty = ty0 - 2; ty <= ty1 + 6; ty++) for (let tx = tx0 - 4; tx <= tx1 + 1; tx++) {
       const b = Game.buildAt(tx, ty); if (!b) continue;
-      if (BUILD_BY_ID[b.type].floor) Art.drawFloor(ctx, b, tx * TILE, ty * TILE, G.time);
-      else dl.push({ y: ty * TILE + 28, k: 'build', b });
+      if (b.type === 'part') continue;
+      const BB = BUILD_BY_ID[b.type];
+      if (BB.floor) Art.drawFloor(ctx, b, tx * TILE, ty * TILE, G.time);
+      else dl.push({ y: (ty + (BB.size ? BB.size[1] : 1)) * TILE - 4, k: 'build', b });
     }
     // Lager der Überlebenden
     for (const c of World.camps) {
@@ -122,6 +124,12 @@ const R = {
       }
       case 'build': {
         const b = d.b, x = b.tx * TILE + 16, y = b.ty * TILE + 28;
+        if (b.type === 'home' || b.type === 'bighome') {
+          const [w, h] = BUILD_BY_ID[b.type].size, sp = Art.landmark(b.type === 'home' ? 'house' : 'cabin', false, (b.tx + b.ty) % 3);
+          const cx = (b.tx + w / 2) * TILE, by = (b.ty + h) * TILE;
+          ctx.drawImage(sp.c, cx - sp.w / 2, by - (sp.h - 6), sp.w, sp.h);
+          return;
+        }
         if (b.type === 'fence' || b.type === 'wall') {
           const spr = b.type;
           for (const [dx, dy] of [[1, 0], [0, 1]]) {
@@ -257,6 +265,17 @@ const R = {
     let ok;
     if (G.buildMode === 'remove') ok = !!Game.buildAt(tx, ty);
     else ok = !Game.canPlace(G.buildMode, tx, ty);
+    const BS = BUILD_BY_ID[G.buildMode];
+    if (BS && BS.size) {
+      const fp = Game.footprint(G.buildMode, tx, ty);
+      ctx.fillStyle = ok ? 'rgba(120,255,140,.35)' : 'rgba(255,90,90,.35)';
+      for (const [x, y] of fp.tiles) { rrect(ctx, x * TILE + 1, y * TILE + 1, TILE - 2, TILE - 2, 6); ctx.fill(); }
+      if (ok) {
+        const sp = Art.landmark(BS.id === 'home' ? 'house' : 'cabin', false, 0);
+        ctx.globalAlpha = 0.55; ctx.drawImage(sp.c, (fp.ox + fp.w / 2) * TILE - sp.w / 2, (fp.oy + fp.h) * TILE - (sp.h - 6), sp.w, sp.h); ctx.globalAlpha = 1;
+      }
+      return;
+    }
     ctx.fillStyle = ok ? 'rgba(120,255,140,.35)' : 'rgba(255,90,90,.35)';
     rrect(ctx, tx * TILE + 1, ty * TILE + 1, TILE - 2, TILE - 2, 6); ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = ok ? '#2e8b57' : '#c0392b'; ctx.stroke();
@@ -277,7 +296,8 @@ const R = {
     const tx0 = Math.floor(this.wx(-200) / TILE), tx1 = Math.floor(this.wx(this.W + 200) / TILE), ty0 = Math.floor(this.wy(-200) / TILE), ty1 = Math.floor(this.wy(this.H + 200) / TILE);
     for (const k in G.builds) {
       const b = G.builds[k]; if (b.tx < tx0 || b.tx > tx1 || b.ty < ty0 || b.ty > ty1) continue;
-      const B = BUILD_BY_ID[b.type]; if (B.light) L.push({ x: b.tx * TILE + 16, y: b.ty * TILE + (b.type === 'lantern' ? -10 : 14), r: B.light * (0.95 + Math.sin(now * 8 + b.tx) * 0.04), warm: b.type !== 'statue' });
+      const B = BUILD_BY_ID[b.type]; if (B.size) { L.push({ x: (b.tx + B.size[0] / 2) * TILE, y: (b.ty + B.size[1]) * TILE - 30, r: B.light, warm: true }); continue; }
+      if (B.light) L.push({ x: b.tx * TILE + 16, y: b.ty * TILE + (b.type === 'lantern' ? -10 : 14), r: B.light * (0.95 + Math.sin(now * 8 + b.tx) * 0.04), warm: b.type !== 'statue' });
     }
     for (const c of World.camps) if (Math.abs(c.x - p.x) < 1400 && Math.abs(c.y - p.y) < 1000) L.push({ x: c.x, y: c.y - 8, r: 140 * (0.95 + Math.sin(now * 7 + c.i) * 0.05), warm: true });
     for (const l of World.landmarks) {
@@ -393,7 +413,7 @@ const MiniMap = {
       if (!G.discovered[l.id] && !vis(x, y)) continue;
       icon(x, y, Game.lmDone(l) ? '#06d6a0' : '#ffb72b', full ? 7 : 4, LANDMARKS[l.type].name);
     }
-    for (const s of G.survivors) if (s.state === 'camp' && vis(s.x, s.y)) icon(s.x, s.y, '#ff6f91', full ? 5 : 3, full ? SURVIVORS[s.i].name : '');
+    for (const s of G.survivors) if (s.state === 'camp' && (vis(s.x, s.y) || G.upgrades.compass)) icon(s.x, s.y, '#ff6f91', full ? 5 : 3, full ? SURVIVORS[s.i].name : '');
     for (const v of G.vehicles) if (v.id !== p.riding) icon(v.x, v.y, '#4ea8de', full ? 5 : 3, full ? { bike: 'Fahrrad', scooter: 'Roller', boat: 'Boot', balloon: 'Ballon' }[v.type] : '');
     if (UI.goalTarget) { const X = ox + UI.goalTarget.x / TILE * sc, Y = oy + UI.goalTarget.y / TILE * sc; ctx.strokeStyle = '#ffd34a'; ctx.lineWidth = 3; circ(ctx, X, Y, full ? 12 : 7); ctx.stroke(); }
     const X = ox + p.x / TILE * sc, Y = oy + p.y / TILE * sc;
